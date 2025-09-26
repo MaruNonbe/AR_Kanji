@@ -16,8 +16,39 @@
   :root{
     --ink:#e9edf5; --muted:#b7c6df; --panel:#0f1421; --line:#2a3550; --acc:#59c6ff;
   }
-  html,body{margin:0;height:100%;background:#000;color:var(--ink);font-family:"Zen Maru Gothic","Noto Sans JP",system-ui, -apple-system, Segoe UI, Roboto, sans-serif}
+
+  /* ★ 黒画面対策：背景は透明に */
+  html,body{
+    margin:0; height:100%;
+    background: transparent !important;
+    color:var(--ink);
+    font-family:"Zen Maru Gothic","Noto Sans JP",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  }
   a{color:#9fd1ff}
+
+  /* ★ カメラ(video)を全面に敷く */
+  #arjs-video, video#arjs-video{
+    position:fixed !important;
+    inset:0 !important;
+    width:100vw !important;
+    height:100vh !important;
+    object-fit:cover !important;
+    z-index:0 !important;
+    background:transparent !important;
+  }
+
+  /* ★ A-Frameシーン/キャンバスも全面＆上に */
+  a-scene{
+    position:fixed !important;
+    inset:0 !important;
+    width:100vw !important;
+    height:100vh !important;
+    z-index:1 !important;
+  }
+  canvas.a-canvas{
+    width:100vw !important;
+    height:100vh !important;
+  }
 
   /* 画面上メモ */
   .notice{position:fixed;left:8px;top:8px;background:rgba(0,0,0,.5);color:#cfe0ff;padding:6px 8px;border-radius:10px;font-size:12px;z-index:5}
@@ -33,7 +64,7 @@
     border-radius:12px;padding:10px 12px;font-size:14px
   }
 
-  /* クレジット常時表示（フッター右下） */
+  /* クレジット */
   .credit{
     position:fixed;right:8px;bottom:calc(env(safe-area-inset-bottom,0) + 60px);
     color:var(--muted);font-size:11px;background:rgba(0,0,0,.40);
@@ -85,6 +116,13 @@
   @media (max-width:480px){
     .chat{bottom:96px}
   }
+
+  /* 印刷時の調整 */
+  @media print{
+    @page{ margin: 16mm }
+    #credit{ position: static; background: none; padding: 0; font-size: 10pt }
+    .ui, .chat, .notice, .start { display:none !important }
+  }
 </style>
 </head>
 <body>
@@ -92,18 +130,19 @@
 <!-- 画面上メモ -->
 <div class="notice">
   マーカー（HIRO）にかざしてください：
-  <a href="https://raw.githubusercontent.com/AR-js-org/AR.js/master/three.js/examples/marker-training/examples/pattern-files/hiro.png" target="_blank">印刷用HIRO</a>
+  <a href="https://raw.githubusercontent.com/AR-js-org/AR.js/master/three.js/examples/marker-training/examples/pattern-files/hiro.png" target="_blank" rel="noopener">印刷用HIRO</a>
 </div>
 
 <!-- A-Frameシーン：カメラ許可が必要 -->
-<a-scene embedded vr-mode-ui="enabled:false" renderer="alpha:true;antialias:true"
+<a-scene embedded vr-mode-ui="enabled:false"
+         renderer="alpha:true;antialias:true"
          arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false">
-  <!-- HIROマーカーが見つかったら中身を表示 -->
+  <!-- HIROマーカー -->
   <a-marker type="pattern" url="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/three.js/examples/marker-training/examples/pattern-files/patt.hiro">
-    <!-- 漢字表示（大きな3Dテキスト） -->
+    <!-- 漢字表示 -->
     <a-entity id="kanjiText" text="value: 海; color: #59c6ff; align: center; width: 4"
               position="0 0 0" rotation="-90 0 0"></a-entity>
-    <!-- ベース（影防止のため平面） -->
+    <!-- ベース -->
     <a-plane position="0 -0.01 0" rotation="-90 0 0" width="2" height="2" color="#111" opacity="0.4"></a-plane>
   </a-marker>
 
@@ -111,14 +150,14 @@
   <a-entity camera></a-entity>
 </a-scene>
 
-<!-- 下部UI（音声・筆順・切替） -->
+<!-- 下部UI -->
 <div class="ui" aria-label="操作パネル">
   <button id="btnSpeak">音声</button>
   <button id="btnStroke">筆順アニメ</button>
   <button id="btnNext">次の問題</button>
 </div>
 
-<!-- フッター・クレジット（常時表示 & 印刷時は自動脚注） -->
+<!-- フッター・クレジット -->
 <div class="credit" id="credit">
   © Freedom ｜ Uses KanjiVG (CC BY-SA 3.0) ｜ For non-commercial educational use
 </div>
@@ -133,7 +172,7 @@
   </div>
 </div>
 
-<!-- Chat（簡易会話） -->
+<!-- Chat -->
 <div class="chat" aria-live="polite">
   <div class="chat-head">
     <strong>アプリと会話</strong>
@@ -148,7 +187,7 @@
   </div>
 </div>
 
-<!-- 開始オーバーレイ（ユーザー操作でBGM & カメラ実行） -->
+<!-- 開始オーバーレイ -->
 <div class="start" id="start">
   <div class="card">
     <div class="logo">AR漢字ドリル</div>
@@ -160,13 +199,12 @@
   </div>
 </div>
 
-<!-- 任意BGM（差し替えたい場合は src を自前のCC0音源に変更） -->
+<!-- 任意BGM -->
 <audio id="bgm" loop preload="none" crossorigin="anonymous"></audio>
 
 <script>
 /* =========================
    基本データ（サンプル）
-   実運用ではCSV等に差し替え可
 ========================= */
 const items = [
   {kana:'うみ',kanji:'海',sentence:'うみでおよぐ'},
@@ -201,7 +239,7 @@ document.getElementById('btnSpeak').addEventListener('click', ()=>{
 });
 
 /* =========================
-   筆順（KanjiVG：CDN→ローカル/kanjivg）
+   筆順（KanjiVG）
 ========================= */
 function kanjivgUrls(ch){
   const cp = ch.codePointAt(0);
@@ -315,7 +353,7 @@ chatSend.addEventListener('click', sendChat);
 chatText.addEventListener('keydown', (e)=>{ if(e.key==='Enter') sendChat(); });
 
 /* =========================
-   BGM（自動生成 or 任意音源）＆開始オーバーレイ
+   BGM＆開始オーバーレイ
 ========================= */
 const start = document.getElementById('start');
 const btnStart = document.getElementById('btnStart');
@@ -326,14 +364,12 @@ function startWebAudioAmbient(){
   try{
     audioCtx = new (window.AudioContext||window.webkitAudioContext)();
     const master = audioCtx.createGain(); master.gain.value = 0.06; master.connect(audioCtx.destination);
-    // 和音っぽいパッド（著作権フリー：生成音）
     [220, 277.18, 329.63].forEach((f,i)=>{
       const osc = audioCtx.createOscillator();
       const g = audioCtx.createGain(); g.gain.value = 0.0;
       osc.type = 'sine'; osc.frequency.value = f;
       osc.connect(g); g.connect(master);
       osc.start();
-      // ゆっくりフェード
       const t = audioCtx.currentTime + i*0.2;
       g.gain.linearRampToValueAtTime(0.0, t);
       g.gain.linearRampToValueAtTime(0.12, t+4.0);
@@ -343,30 +379,14 @@ function startWebAudioAmbient(){
   }catch(e){}
 }
 btnStart.addEventListener('click', async ()=>{
-  // iOS/Android のオート再生制限回避：ユーザー操作で開始
   try{
-    // 自前音源を使いたい場合：bgm.src = 'YOUR_CC0_MUSIC.mp3';
     if(bgm.src){ await bgm.play(); } else { startWebAudioAmbient(); }
   }catch(_){}
   start.style.display = 'none';
   renderAR();
 });
 
-/* =========================
-   印刷時に脚注を自動挿入
-========================= */
-(function ensurePrintFootnote(){
-  const style = document.createElement('style');
-  style.media = 'print';
-  style.textContent = `
-  @page{ margin: 16mm }
-  #credit{ position: static; background: none; padding: 0; font-size: 10pt }
-  .ui, .chat, .notice, .start { display:none !important }
-  `;
-  document.head.appendChild(style);
-})();
-
-/* 初期表示（ARテキストは開始クリック後に反映） */
+/* 初期表示 */
 renderAR();
 </script>
 </body>
