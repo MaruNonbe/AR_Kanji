@@ -9,33 +9,95 @@
 <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.4/aframe/build/aframe-ar.js"></script>
 
-<!-- 丸ゴフォント（UI用） -->
+<!-- 丸ゴ系フォント（UI） -->
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
+
 <style>
-  html,body{margin:0;height:100%;font-family:"Zen Maru Gothic","Noto Sans JP",sans-serif}
+  :root{
+    --ink:#e9edf5; --muted:#b7c6df; --panel:#0f1421; --line:#2a3550; --acc:#59c6ff;
+  }
+  html,body{margin:0;height:100%;background:#000;color:var(--ink);font-family:"Zen Maru Gothic","Noto Sans JP",system-ui, -apple-system, Segoe UI, Roboto, sans-serif}
+  a{color:#9fd1ff}
+
+  /* 画面上メモ */
+  .notice{position:fixed;left:8px;top:8px;background:rgba(0,0,0,.5);color:#cfe0ff;padding:6px 8px;border-radius:10px;font-size:12px;z-index:5}
+
+  /* 下部UI */
   .ui{
     position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;justify-content:center;
-    padding:10px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.55));
+    padding:10px 10px calc(env(safe-area-inset-bottom,0) + 10px);
+    background:linear-gradient(180deg,transparent,rgba(0,0,0,.55));z-index:6
   }
   .ui button{
-    appearance:none;border:1px solid #2b3141;background:#161b22;color:#e9edf5;border-radius:12px;
-    padding:10px 12px;font-size:14px
+    appearance:none;border:1px solid var(--line);background:#161b22;color:var(--ink);
+    border-radius:12px;padding:10px 12px;font-size:14px
   }
-  .notice{position:fixed;left:8px;top:8px;background:rgba(0,0,0,.5);color:#cfe0ff;padding:6px 8px;border-radius:10px;font-size:12px}
-  /* 筆順モーダル */
+
+  /* クレジット常時表示（フッター右下） */
+  .credit{
+    position:fixed;right:8px;bottom:calc(env(safe-area-inset-bottom,0) + 60px);
+    color:var(--muted);font-size:11px;background:rgba(0,0,0,.40);
+    padding:4px 6px;border-radius:8px;z-index:5
+  }
+
+  /* モーダル（筆順） */
   .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:18px;z-index:10}
-  .paper{background:#0f1421;border:1px solid #283042;border-radius:14px;max-width:92ch;width:100%;max-height:85vh;overflow:auto;padding:16px;color:#e9edf5}
+  .paper{background:var(--panel);border:1px solid var(--line);border-radius:14px;max-width:92ch;width:100%;max-height:85vh;overflow:auto;padding:16px}
   .paper h3{margin:0 0 8px}
-  .close{float:right}
-  .credit{position:fixed;right:8px;bottom:8px;color:#b7c6df;font-size:11px;background:rgba(0,0,0,.4);padding:4px 6px;border-radius:8px}
+  .close{float:right;border:1px solid var(--line);background:#161b22;color:var(--ink);border-radius:10px;padding:6px 10px}
+
+  /* Chat（簡易会話） */
+  .chat{
+    position:fixed; left:8px; right:8px; bottom:84px;
+    background:rgba(15,20,33,.86); border:1px solid var(--line);
+    border-radius:14px; backdrop-filter: blur(6px); color:var(--ink);
+    max-width:720px; margin:0 auto; z-index:9;
+  }
+  .chat-head{display:flex;justify-content:space-between;align-items:center;
+    padding:8px 12px; border-bottom:1px solid var(--line); font-size:14px}
+  .chat-log{max-height:28vh; overflow:auto; padding:10px 12px; font-size:14px}
+  .msg{display:flex; gap:8px; margin:6px 0}
+  .msg .who{min-width:44px; opacity:.7}
+  .msg .bubble{background:#121829; border:1px solid var(--line); border-radius:10px; padding:8px 10px; flex:1}
+  .msg.me .bubble{background:#1c2437}
+  .chat-input{display:flex; gap:8px; padding:8px; border-top:1px solid var(--line)}
+  .chat-input input{flex:1; min-width:0; background:#0f1421; color:var(--ink); border:1px solid var(--line); border-radius:10px; padding:10px 12px}
+  .chat-input button{appearance:none; border:1px solid var(--line); background:#161b22; color:var(--ink); border-radius:10px; padding:10px 12px}
+
+  /* 開始オーバーレイ（カメラ/音の許可） */
+  .start{
+    position:fixed; inset:0; display:grid; place-items:center; z-index:20;
+    background:radial-gradient(1000px 600px at 50% -10%, #1b2440 0%, #070a12 60%, #000 100%);
+    color:var(--ink);
+  }
+  .start .card{
+    text-align:center; max-width:640px; padding:22px 18px; margin:0 16px;
+    border:1px solid #263149; border-radius:16px; background:rgba(10,13,22,.65); backdrop-filter: blur(8px);
+  }
+  .logo{font-weight:700; font-size:22px; letter-spacing:.08em; margin-bottom:8px}
+  .pulse{animation:pulse 1.8s infinite}
+  @keyframes pulse{0%{opacity:.5}50%{opacity:1}100%{opacity:.5}}
+  .start button{
+    margin-top:10px; appearance:none; border:1px solid var(--line); background:#1b2236; color:var(--ink);
+    border-radius:12px; padding:12px 16px; font-size:16px
+  }
+
+  @media (max-width:480px){
+    .chat{bottom:96px}
+  }
 </style>
 </head>
 <body>
+
 <!-- 画面上メモ -->
-<div class="notice">マーカー（HIRO）にかざしてください：<a href="https://raw.githubusercontent.com/AR-js-org/AR.js/master/three.js/examples/marker-training/examples/pattern-files/hiro.png" target="_blank" style="color:#9fd1ff">印刷用HIRO</a></div>
+<div class="notice">
+  マーカー（HIRO）にかざしてください：
+  <a href="https://raw.githubusercontent.com/AR-js-org/AR.js/master/three.js/examples/marker-training/examples/pattern-files/hiro.png" target="_blank">印刷用HIRO</a>
+</div>
 
 <!-- A-Frameシーン：カメラ許可が必要 -->
-<a-scene embedded vr-mode-ui="enabled:false" renderer="alpha:true;antialias:true" arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;">
+<a-scene embedded vr-mode-ui="enabled:false" renderer="alpha:true;antialias:true"
+         arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false">
   <!-- HIROマーカーが見つかったら中身を表示 -->
   <a-marker type="pattern" url="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/three.js/examples/marker-training/examples/pattern-files/patt.hiro">
     <!-- 漢字表示（大きな3Dテキスト） -->
@@ -50,12 +112,16 @@
 </a-scene>
 
 <!-- 下部UI（音声・筆順・切替） -->
-<div class="ui">
+<div class="ui" aria-label="操作パネル">
   <button id="btnSpeak">音声</button>
   <button id="btnStroke">筆順アニメ</button>
   <button id="btnNext">次の問題</button>
 </div>
-<div class="credit">© Freedom ｜ Uses KanjiVG (CC BY-SA 3.0)</div>
+
+<!-- フッター・クレジット（常時表示 & 印刷時は自動脚注） -->
+<div class="credit" id="credit">
+  © Freedom ｜ Uses KanjiVG (CC BY-SA 3.0) ｜ For non-commercial educational use
+</div>
 
 <!-- 筆順モーダル -->
 <div id="strokeModal" class="modal" role="dialog" aria-modal="true">
@@ -63,27 +129,65 @@
     <button id="closeStroke" class="close">閉じる</button>
     <h3>筆順アニメ</h3>
     <div id="strokeBox" style="min-height:220px"></div>
-    <p style="font-size:12px;color:#b7c6df">データ：KanjiVG（CC BY-SA 3.0）。オンラインはCDN、オフラインは <code>/kanjivg/</code> を同階層に配置。</p>
+    <p style="font-size:12px;color:var(--muted)">データ：KanjiVG（CC BY-SA 3.0）。オンラインはCDN、オフラインはこのHTMLと同階層の <code>/kanjivg/</code> を参照します。</p>
   </div>
 </div>
 
+<!-- Chat（簡易会話） -->
+<div class="chat" aria-live="polite">
+  <div class="chat-head">
+    <strong>アプリと会話</strong>
+    <label style="display:flex;gap:6px;align-items:center;font-size:12px">
+      <input id="chatTTS" type="checkbox"> 返信を読み上げ
+    </label>
+  </div>
+  <div id="chatLog" class="chat-log"></div>
+  <div class="chat-input">
+    <input id="chatText" type="text" placeholder="例）筆順見せて / 次 / 姿勢 / ほめて / ヒント" autocomplete="off">
+    <button id="chatSend">送信</button>
+  </div>
+</div>
+
+<!-- 開始オーバーレイ（ユーザー操作でBGM & カメラ実行） -->
+<div class="start" id="start">
+  <div class="card">
+    <div class="logo">AR漢字ドリル</div>
+    <div>「開始」を押して、カメラ利用を許可してください。BGMはいつでも停止できます。</div>
+    <button id="btnStart" class="pulse">開始</button>
+    <div style="margin-top:10px;font-size:12px;color:var(--muted)">
+      推奨：明るい場所／HIROマーカーを印刷して水平に置く
+    </div>
+  </div>
+</div>
+
+<!-- 任意BGM（差し替えたい場合は src を自前のCC0音源に変更） -->
+<audio id="bgm" loop preload="none" crossorigin="anonymous"></audio>
+
 <script>
-/* ===== サンプル問題（実運用ではCSVを読み込んで差し替え） ===== */
+/* =========================
+   基本データ（サンプル）
+   実運用ではCSV等に差し替え可
+========================= */
 const items = [
   {kana:'うみ',kanji:'海',sentence:'うみでおよぐ'},
   {kana:'やま',kanji:'山',sentence:'やまでハイキングをする'},
-  {kana:'かわ',kanji:'川',sentence:'かわで石をひろう'}
+  {kana:'かわ',kanji:'川',sentence:'かわで石をひろう'},
+  {kana:'なが',kanji:'長',sentence:'ながい道'}
 ];
 let idx = 0;
 
-/* ===== AR上の漢字を書き換え ===== */
+/* =========================
+   ARのテキスト更新
+========================= */
 const kanjiEntity = document.getElementById('kanjiText');
 function renderAR() {
   const it = items[idx];
   kanjiEntity.setAttribute('text', `value: ${it.kanji}; color: #59c6ff; align: center; width: 4`);
 }
 
-/* ===== 音声読み上げ（Web Speech API） ===== */
+/* =========================
+   音声読み上げ（Web Speech）
+========================= */
 function speak(text){
   try{
     const u = new SpeechSynthesisUtterance(text);
@@ -96,7 +200,9 @@ document.getElementById('btnSpeak').addEventListener('click', ()=>{
   speak(`${it.kana}。${it.sentence}`);
 });
 
-/* ===== 筆順（KanjiVG：CDN→ローカル/kanjivg） ===== */
+/* =========================
+   筆順（KanjiVG：CDN→ローカル/kanjivg）
+========================= */
 function kanjivgUrls(ch){
   const cp = ch.codePointAt(0);
   const f5 = cp.toString(16).padStart(5,'0');
@@ -138,12 +244,129 @@ document.getElementById('btnStroke').addEventListener('click', ()=>{
 document.getElementById('closeStroke').addEventListener('click', ()=> modal.style.display='none');
 document.getElementById('strokeModal').addEventListener('click', (e)=>{ if(e.target.id==='strokeModal') modal.style.display='none' });
 
-/* ===== 次の問題 ===== */
+/* =========================
+   次の問題
+========================= */
 document.getElementById('btnNext').addEventListener('click', ()=>{
   idx = (idx+1) % items.length; renderAR();
 });
 
-/* 初期表示 */
+/* =========================
+   Chat（簡易会話）
+========================= */
+const chatLog = document.getElementById('chatLog');
+const chatText = document.getElementById('chatText');
+const chatSend = document.getElementById('chatSend');
+const chatTTS  = document.getElementById('chatTTS');
+
+function pushMsg(who, text){
+  const div = document.createElement('div');
+  div.className = 'msg' + (who==='わたし' ? ' me' : '');
+  div.innerHTML = `<div class="who">${who}</div><div class="bubble">${text}</div>`;
+  chatLog.appendChild(div);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+function reply(text){
+  pushMsg('アプリ', text);
+  if(chatTTS?.checked){ try{ speak(text); }catch(_){} }
+}
+function handleUserQuery(q){
+  const it = items[idx];
+  const s = q.trim().replace(/\s+/g,'').toLowerCase();
+
+  if(/^(つぎ|次|next)$/.test(s)){ idx = (idx+1)%items.length; renderAR(); return reply('つぎの問題に切り替えました。'); }
+  if(/^(まえ|前|prev|もどして|戻して)$/.test(s)){ idx = (idx-1+items.length)%items.length; renderAR(); return reply('前の問題に戻しました。'); }
+  if(/(筆順|ひつじゅん|stroke)/.test(s)){ showStrokeOrder(it.kanji); modal.style.display='flex'; return reply(`「${it.kanji}」の筆順を表示します。`); }
+  if(/(よんで|読んで|音声|おんせい|しゃべって)/.test(s)){ try{ speak(`${it.kana}。${it.sentence}`); }catch(_){}
+    return reply('読み上げました。'); }
+  if(/(ヒント|hint)/.test(s)){ return reply(`ヒント：最初の文字は「${it.kanji[0]}」。空で大きく書いてみよう。`); }
+  if(/(意味|いみ|どんな漢字)/.test(s)){ return reply(`今の漢字は「${it.kanji}」で、読みは「${it.kana}」。例文：${it.sentence}`); }
+  if(/(姿勢|しせい|持ち方|もちかた)/.test(s)){
+    const tips = [
+      '紙は少し斜めに。左手で紙を押さえよう。',
+      '肘を机に軽く置いて、手首をふわっと。',
+      '書く前に深呼吸を3秒。ゆっくりでOK。',
+      '一画ごとに止め・はね・はらいを意識。'
+    ];
+    return reply(tips[Math.floor(Math.random()*tips.length)]);
+  }
+  if(/(ほめて|褒めて|つかれた|疲れた|むずかしい|難しい)/.test(s)){
+    const cheers = [
+      'いいペース！昨日より一歩前進してるよ👍',
+      '大丈夫。1分休んでから、最初の一画だけ一緒にいこう。',
+      'できてる！線がまっすぐで読みやすいね。',
+      'ゆっくりでOK。失敗は学びの近道だよ。'
+    ];
+    return reply(cheers[Math.floor(Math.random()*cheers.length)]);
+  }
+  if(/(こんにちは|こんばんは|やあ|hello|hi)/.test(s)){
+    return reply('こんにちは！「筆順」「次」「姿勢」「ヒント」「ほめて」など話しかけてね。');
+  }
+  return reply('わからなかった… 例：『筆順』『音声』『次』『姿勢』『ヒント』『ほめて』を試してね。');
+}
+function sendChat(){
+  const text = chatText.value.trim();
+  if(!text) return;
+  pushMsg('わたし', text);
+  chatText.value = '';
+  handleUserQuery(text);
+}
+chatSend.addEventListener('click', sendChat);
+chatText.addEventListener('keydown', (e)=>{ if(e.key==='Enter') sendChat(); });
+
+/* =========================
+   BGM（自動生成 or 任意音源）＆開始オーバーレイ
+========================= */
+const start = document.getElementById('start');
+const btnStart = document.getElementById('btnStart');
+const bgm = document.getElementById('bgm');
+
+let audioCtx, gOsc = [];
+function startWebAudioAmbient(){
+  try{
+    audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    const master = audioCtx.createGain(); master.gain.value = 0.06; master.connect(audioCtx.destination);
+    // 和音っぽいパッド（著作権フリー：生成音）
+    [220, 277.18, 329.63].forEach((f,i)=>{
+      const osc = audioCtx.createOscillator();
+      const g = audioCtx.createGain(); g.gain.value = 0.0;
+      osc.type = 'sine'; osc.frequency.value = f;
+      osc.connect(g); g.connect(master);
+      osc.start();
+      // ゆっくりフェード
+      const t = audioCtx.currentTime + i*0.2;
+      g.gain.linearRampToValueAtTime(0.0, t);
+      g.gain.linearRampToValueAtTime(0.12, t+4.0);
+      g.gain.linearRampToValueAtTime(0.08, t+8.0);
+      gOsc.push({osc,g});
+    });
+  }catch(e){}
+}
+btnStart.addEventListener('click', async ()=>{
+  // iOS/Android のオート再生制限回避：ユーザー操作で開始
+  try{
+    // 自前音源を使いたい場合：bgm.src = 'YOUR_CC0_MUSIC.mp3';
+    if(bgm.src){ await bgm.play(); } else { startWebAudioAmbient(); }
+  }catch(_){}
+  start.style.display = 'none';
+  renderAR();
+});
+
+/* =========================
+   印刷時に脚注を自動挿入
+========================= */
+(function ensurePrintFootnote(){
+  const style = document.createElement('style');
+  style.media = 'print';
+  style.textContent = `
+  @page{ margin: 16mm }
+  #credit{ position: static; background: none; padding: 0; font-size: 10pt }
+  .ui, .chat, .notice, .start { display:none !important }
+  `;
+  document.head.appendChild(style);
+})();
+
+/* 初期表示（ARテキストは開始クリック後に反映） */
 renderAR();
 </script>
 </body>
