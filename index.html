@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>AR漢字ドリル（マーカー版）</title>
+
+<!-- A-Frame + AR.js (marker-based) -->
+<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.4/aframe/build/aframe-ar.js"></script>
+
+<!-- 丸ゴフォント（UI用） -->
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;height:100%;font-family:"Zen Maru Gothic","Noto Sans JP",sans-serif}
+  .ui{
+    position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;justify-content:center;
+    padding:10px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.55));
+  }
+  .ui button{
+    appearance:none;border:1px solid #2b3141;background:#161b22;color:#e9edf5;border-radius:12px;
+    padding:10px 12px;font-size:14px
+  }
+  .notice{position:fixed;left:8px;top:8px;background:rgba(0,0,0,.5);color:#cfe0ff;padding:6px 8px;border-radius:10px;font-size:12px}
+  /* 筆順モーダル */
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;padding:18px;z-index:10}
+  .paper{background:#0f1421;border:1px solid #283042;border-radius:14px;max-width:92ch;width:100%;max-height:85vh;overflow:auto;padding:16px;color:#e9edf5}
+  .paper h3{margin:0 0 8px}
+  .close{float:right}
+  .credit{position:fixed;right:8px;bottom:8px;color:#b7c6df;font-size:11px;background:rgba(0,0,0,.4);padding:4px 6px;border-radius:8px}
+</style>
+</head>
+<body>
+<!-- 画面上メモ -->
+<div class="notice">マーカー（HIRO）にかざしてください：<a href="https://raw.githubusercontent.com/AR-js-org/AR.js/master/three.js/examples/marker-training/examples/pattern-files/hiro.png" target="_blank" style="color:#9fd1ff">印刷用HIRO</a></div>
+
+<!-- A-Frameシーン：カメラ許可が必要 -->
+<a-scene embedded vr-mode-ui="enabled:false" renderer="alpha:true;antialias:true" arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false;">
+  <!-- HIROマーカーが見つかったら中身を表示 -->
+  <a-marker type="pattern" url="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/three.js/examples/marker-training/examples/pattern-files/patt.hiro">
+    <!-- 漢字表示（大きな3Dテキスト） -->
+    <a-entity id="kanjiText" text="value: 海; color: #59c6ff; align: center; width: 4"
+              position="0 0 0" rotation="-90 0 0"></a-entity>
+    <!-- ベース（影防止のため平面） -->
+    <a-plane position="0 -0.01 0" rotation="-90 0 0" width="2" height="2" color="#111" opacity="0.4"></a-plane>
+  </a-marker>
+
+  <!-- AR用カメラ -->
+  <a-entity camera></a-entity>
+</a-scene>
+
+<!-- 下部UI（音声・筆順・切替） -->
+<div class="ui">
+  <button id="btnSpeak">音声</button>
+  <button id="btnStroke">筆順アニメ</button>
+  <button id="btnNext">次の問題</button>
+</div>
+<div class="credit">© Freedom ｜ Uses KanjiVG (CC BY-SA 3.0)</div>
+
+<!-- 筆順モーダル -->
+<div id="strokeModal" class="modal" role="dialog" aria-modal="true">
+  <div class="paper">
+    <button id="closeStroke" class="close">閉じる</button>
+    <h3>筆順アニメ</h3>
+    <div id="strokeBox" style="min-height:220px"></div>
+    <p style="font-size:12px;color:#b7c6df">データ：KanjiVG（CC BY-SA 3.0）。オンラインはCDN、オフラインは <code>/kanjivg/</code> を同階層に配置。</p>
+  </div>
+</div>
+
+<script>
+/* ===== サンプル問題（実運用ではCSVを読み込んで差し替え） ===== */
+const items = [
+  {kana:'うみ',kanji:'海',sentence:'うみでおよぐ'},
+  {kana:'やま',kanji:'山',sentence:'やまでハイキングをする'},
+  {kana:'かわ',kanji:'川',sentence:'かわで石をひろう'}
+];
+let idx = 0;
+
+/* ===== AR上の漢字を書き換え ===== */
+const kanjiEntity = document.getElementById('kanjiText');
+function renderAR() {
+  const it = items[idx];
+  kanjiEntity.setAttribute('text', `value: ${it.kanji}; color: #59c6ff; align: center; width: 4`);
+}
+
+/* ===== 音声読み上げ（Web Speech API） ===== */
+function speak(text){
+  try{
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'ja-JP'; u.rate = 1.0; u.pitch = 1.0;
+    window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+document.getElementById('btnSpeak').addEventListener('click', ()=>{
+  const it = items[idx];
+  speak(`${it.kana}。${it.sentence}`);
+});
+
+/* ===== 筆順（KanjiVG：CDN→ローカル/kanjivg） ===== */
+function kanjivgUrls(ch){
+  const cp = ch.codePointAt(0);
+  const f5 = cp.toString(16).padStart(5,'0');
+  const f4 = cp.toString(16).padStart(4,'0');
+  return [
+    `https://cdn.jsdelivr.net/gh/KanjiVG/kanjivg/kanji/${f5}.svg`,
+    `./kanjivg/${f5}.svg`,
+    `./kanjivg/${f4}.svg`,
+  ];
+}
+async function showStrokeOrder(ch){
+  const box = document.getElementById('strokeBox');
+  box.innerHTML = '<div style="color:#9fb4ff">読み込み中…</div>';
+  let svgText=null;
+  for(const u of kanjivgUrls(ch)){
+    try{ const res = await fetch(u, {mode:'cors'}); if(res.ok){ svgText = await res.text(); break; } }catch(_){}
+  }
+  if(!svgText){ box.innerHTML = '筆順データが見つかりません。'; return; }
+  const wrap = document.createElement('div'); wrap.innerHTML = svgText;
+  const svg = wrap.querySelector('svg'); if(!svg){ box.textContent='データ形式エラー'; return; }
+  svg.setAttribute('width','320'); svg.setAttribute('height','320'); svg.setAttribute('viewBox','0 0 109 109');
+  svg.querySelectorAll('path').forEach(p=>{
+    p.setAttribute('fill','none'); p.setAttribute('stroke','#7fb3ff'); p.setAttribute('stroke-width','4');
+    p.setAttribute('stroke-linecap','round'); p.setAttribute('stroke-linejoin','round');
+  });
+  box.innerHTML=''; box.appendChild(svg);
+  const paths=[...svg.querySelectorAll('path')].filter(p=>!(p.getAttribute('id')||'').startsWith('kvg:StrokeNumbers'));
+  let i=0; (function step(){ if(i>=paths.length) return;
+    const p=paths[i++]; const len=p.getTotalLength();
+    p.style.strokeDasharray=len; p.style.strokeDashoffset=len; void p.getBoundingClientRect();
+    p.style.transition='stroke-dashoffset 600ms ease'; p.style.strokeDashoffset='0';
+    setTimeout(step,650);
+  })();
+}
+const modal = document.getElementById('strokeModal');
+document.getElementById('btnStroke').addEventListener('click', ()=>{
+  modal.style.display='flex'; showStrokeOrder(items[idx].kanji);
+});
+document.getElementById('closeStroke').addEventListener('click', ()=> modal.style.display='none');
+document.getElementById('strokeModal').addEventListener('click', (e)=>{ if(e.target.id==='strokeModal') modal.style.display='none' });
+
+/* ===== 次の問題 ===== */
+document.getElementById('btnNext').addEventListener('click', ()=>{
+  idx = (idx+1) % items.length; renderAR();
+});
+
+/* 初期表示 */
+renderAR();
+</script>
+</body>
+</html>
