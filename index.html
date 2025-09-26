@@ -124,6 +124,79 @@
     .ui, .chat, .notice, .start { display:none !important }
   }
 </style>
+
+<!-- =========================
+     ② アクセス制御（フロント側）※ここだけ編集して運用
+========================= -->
+<script>
+/*
+  ■使い方
+   - 許可トークンを LOCAL_ALLOW に列挙
+   - URL は https://.../index.html?key=トークン で配布
+   - 初回アクセスから 7 日で自動停止（キーごとに localStorage に保存）
+   - さらに遠隔停止/延長したい場合は USE_REMOTE=true と CONF_URL を設定
+*/
+(function accessGuard(){
+  const REQUIRE_KEY = true;                            // キー必須なら true
+  const LOCAL_ALLOW = new Set(["ABC123","DEF456"]);    // 許可キー一覧（配布先ごとに変更）
+  const TRIAL_DAYS  = 7;                               // 使用開始からの有効日数
+  const USE_REMOTE  = false;                           // 遠隔設定を使うとき true
+  const CONF_URL    = "";                              // 例）"https://example.com/ar-config.json"
+
+  const params = new URLSearchParams(location.search);
+  const key = (params.get("key") || "").trim();
+
+  function deny(msg){
+    document.write(
+      '<div style="padding:24px;line-height:1.8;color:#fff;background:#000">' +
+      (msg || '現在ご利用いただけません。') +
+      '</div>'
+    );
+    throw new Error("AccessDenied");
+  }
+
+  // 1) キーの妥当性
+  if (REQUIRE_KEY && !LOCAL_ALLOW.has(key)) {
+    deny('アクセスできません（キーが無効です）。発行元にお問い合わせください。');
+  }
+
+  // 2) 初回アクセスからの期間制御（ローカル）
+  const LS_KEY = 'ar-kg:firstSeen:' + key;
+  let first = localStorage.getItem(LS_KEY);
+  if (!first) {
+    first = Date.now().toString();
+    try { localStorage.setItem(LS_KEY, first); } catch(_) {}
+  }
+  const expiresAt = Number(first) + TRIAL_DAYS*24*60*60*1000;
+  if (Date.now() > expiresAt) {
+    const d = new Date(expiresAt);
+    deny('利用期限（' + TRIAL_DAYS + '日間）が終了しました。終了：' +
+         d.toLocaleString('ja-JP') + '。キーの延長をご依頼ください。');
+  }
+
+  // 3) 遠隔設定（任意）
+  if (USE_REMOTE && CONF_URL) {
+    // DOM構築前でもOKだが、fetchは非同期なので結果は後追いで評価
+    window.addEventListener('DOMContentLoaded', async () => {
+      try{
+        const res = await fetch(CONF_URL, {cache:'no-store'});
+        if(!res.ok) throw new Error('conf fetch failed');
+        const conf = await res.json(); // 例：{"enabled":true,"expiresAt":"2025-12-31T23:59:00+09:00","allow":["ABC123"]}
+        if (conf.enabled === false) deny('現在メンテナンス中のためご利用いただけません。');
+        if (conf.expiresAt && Date.now() > new Date(conf.expiresAt).getTime()) {
+          deny('利用期限を過ぎました（サーバ設定）。');
+        }
+        if (Array.isArray(conf.allow) && conf.allow.length > 0 && !conf.allow.includes(key)) {
+          deny('このキーでは現在ご利用いただけません（サーバ設定）。');
+        }
+      }catch(e){
+        // 失敗時は黙って続行（ローカル判定のみで運用）
+        console.warn('remote conf error:', e);
+      }
+    });
+  }
+})();
+</script>
 </head>
 <body>
 
